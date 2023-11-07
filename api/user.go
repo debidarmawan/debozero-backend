@@ -7,6 +7,7 @@ import (
 	"time"
 
 	database "github.com/debidarmawan/debozero-backend/database/sqlc"
+	"github.com/debidarmawan/debozero-backend/utils"
 	"github.com/gin-gonic/gin"
 )
 
@@ -21,6 +22,7 @@ func (u User) router(server *Server) {
 
 	serverGroup.GET("", u.listUsers)
 	serverGroup.GET("me", u.getLoggedInUser)
+	serverGroup.PATCH("username", u.updateUsername)
 }
 
 type UserParams struct {
@@ -51,15 +53,8 @@ func (u *User) listUsers(c *gin.Context) {
 }
 
 func (u *User) getLoggedInUser(c *gin.Context) {
-	value, exist := c.Get("user_id")
-	if !exist {
-		c.JSON(http.StatusUnauthorized, gin.H{"message": "unauthorized"})
-		return
-	}
-
-	userID, ok := value.(int64)
-	if !ok {
-		c.JSON(http.StatusInternalServerError, gin.H{"message": "unexpected error"})
+	userID, err := utils.GetActiveUser(c)
+	if err != nil {
 		return
 	}
 
@@ -76,9 +71,45 @@ func (u *User) getLoggedInUser(c *gin.Context) {
 	c.JSON(http.StatusOK, UserResponse{}.toUserResponse(&user))
 }
 
+type UpdateUsernameType struct {
+	Username string `json:"username" binding:"required"`
+}
+
+func (u *User) updateUsername(c *gin.Context) {
+	userID, err := utils.GetActiveUser(c)
+	if err != nil {
+		return
+	}
+
+	var userInfo UpdateUsernameType
+
+	if err := c.ShouldBindJSON(&userInfo); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	arg := database.UpdateUsernameParams{
+		ID: userID,
+		Username: sql.NullString{
+			String: userInfo.Username,
+			Valid:  true,
+		},
+		UpdatedAt: time.Now(),
+	}
+
+	user, err := u.server.queries.UpdateUsername(context.Background(), arg)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, UserResponse{}.toUserResponse(&user))
+}
+
 type UserResponse struct {
 	ID        int64     `json:"id"`
 	Email     string    `json:"email"`
+	UserName  string    `json:"username"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }
@@ -87,6 +118,7 @@ func (u UserResponse) toUserResponse(user *database.User) *UserResponse {
 	return &UserResponse{
 		ID:        user.ID,
 		Email:     user.Email,
+		UserName:  user.Username.String,
 		CreatedAt: user.CreatedAt,
 		UpdatedAt: user.UpdatedAt,
 	}

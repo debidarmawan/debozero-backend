@@ -7,6 +7,7 @@ package database
 
 import (
 	"context"
+	"database/sql"
 	"time"
 )
 
@@ -14,7 +15,7 @@ const createUser = `-- name: CreateUser :one
 INSERT INTO users (
     email,
     password
-) VALUES ($1, $2) RETURNING id, email, password, created_at, updated_at
+) VALUES ($1, $2) RETURNING id, email, password, created_at, updated_at, username
 `
 
 type CreateUserParams struct {
@@ -31,6 +32,7 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.Password,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Username,
 	)
 	return i, err
 }
@@ -54,7 +56,7 @@ func (q *Queries) DeleteUser(ctx context.Context, id int64) error {
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, email, password, created_at, updated_at FROM users WHERE email = $1
+SELECT id, email, password, created_at, updated_at, username FROM users WHERE email = $1
 `
 
 func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error) {
@@ -66,12 +68,13 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 		&i.Password,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Username,
 	)
 	return i, err
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, email, password, created_at, updated_at FROM users WHERE id = $1
+SELECT id, email, password, created_at, updated_at, username FROM users WHERE id = $1
 `
 
 func (q *Queries) GetUserByID(ctx context.Context, id int64) (User, error) {
@@ -83,12 +86,13 @@ func (q *Queries) GetUserByID(ctx context.Context, id int64) (User, error) {
 		&i.Password,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Username,
 	)
 	return i, err
 }
 
 const getUserLists = `-- name: GetUserLists :many
-SELECT id, email, password, created_at, updated_at FROM users ORDER BY id LIMIT $1 OFFSET $2
+SELECT id, email, password, created_at, updated_at, username FROM users ORDER BY id LIMIT $1 OFFSET $2
 `
 
 type GetUserListsParams struct {
@@ -111,6 +115,7 @@ func (q *Queries) GetUserLists(ctx context.Context, arg GetUserListsParams) ([]U
 			&i.Password,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.Username,
 		); err != nil {
 			return nil, err
 		}
@@ -126,7 +131,10 @@ func (q *Queries) GetUserLists(ctx context.Context, arg GetUserListsParams) ([]U
 }
 
 const updateUserPassword = `-- name: UpdateUserPassword :one
-UPDATE users SET password = $1, updated_at = $2 WHERE id = $3 RETURNING id, email, password, created_at, updated_at
+UPDATE users SET 
+password = $1, updated_at = $2 
+WHERE id = $3 
+RETURNING id, email, password, created_at, updated_at, username
 `
 
 type UpdateUserPasswordParams struct {
@@ -144,6 +152,34 @@ func (q *Queries) UpdateUserPassword(ctx context.Context, arg UpdateUserPassword
 		&i.Password,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Username,
+	)
+	return i, err
+}
+
+const updateUsername = `-- name: UpdateUsername :one
+UPDATE users 
+SET username = $1, updated_at = $2 
+WHERE id = $3 
+RETURNING id, email, password, created_at, updated_at, username
+`
+
+type UpdateUsernameParams struct {
+	Username  sql.NullString `json:"username"`
+	UpdatedAt time.Time      `json:"updated_at"`
+	ID        int64          `json:"id"`
+}
+
+func (q *Queries) UpdateUsername(ctx context.Context, arg UpdateUsernameParams) (User, error) {
+	row := q.db.QueryRowContext(ctx, updateUsername, arg.Username, arg.UpdatedAt, arg.ID)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.Password,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Username,
 	)
 	return i, err
 }
