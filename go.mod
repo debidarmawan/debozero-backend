@@ -1,4 +1,4 @@
-module github.com/debidarmawan/debozero
+module github.com/debidarmawan/debozero-backend
 
 go 1.21.1
 

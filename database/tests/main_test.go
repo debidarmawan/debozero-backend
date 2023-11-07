@@ -6,12 +6,12 @@ import (
 	"os"
 	"testing"
 
-	database "github.com/debidarmawan/debozero/database/sqlc"
-	"github.com/debidarmawan/debozero/utils"
+	database "github.com/debidarmawan/debozero-backend/database/sqlc"
+	"github.com/debidarmawan/debozero-backend/utils"
 	_ "github.com/lib/pq"
 )
 
-var testQuery *database.Queries
+var testQuery *database.Store
 
 func TestMain(m *testing.M) {
 	config, err := utils.LoadConfig("../..")
@@ -24,7 +24,7 @@ func TestMain(m *testing.M) {
 		log.Fatal("Could not connect to database", err)
 	}
 
-	testQuery = database.New(conn)
+	testQuery = database.NewStore(conn)
 
 	os.Exit(m.Run())
 }

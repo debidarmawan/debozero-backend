@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/debidarmawan/debozero/api"
+	"github.com/debidarmawan/debozero-backend/api"
 )
 
 func main() {

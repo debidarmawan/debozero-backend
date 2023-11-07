@@ -32,7 +32,7 @@ postgres.db.down:
 
 sqlc.generate:
 	# generate models using sqlc
-	docker run --rm -v "D:\work\github.com\debozero\backend:/src" -w /src sqlc/sqlc generate
+	docker run --rm -v "D:\work\github.com\debozero-backend:/src" -w /src sqlc/sqlc generate
 
 test:
 	go test -v -cover ./...

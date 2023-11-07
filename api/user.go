@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"time"
 
-	database "github.com/debidarmawan/debozero/database/sqlc"
+	database "github.com/debidarmawan/debozero-backend/database/sqlc"
 	"github.com/gin-gonic/gin"
 )
 

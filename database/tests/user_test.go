@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	database "github.com/debidarmawan/debozero/database/sqlc"
-	"github.com/debidarmawan/debozero/utils"
+	database "github.com/debidarmawan/debozero-backend/database/sqlc"
+	"github.com/debidarmawan/debozero-backend/utils"
 	"github.com/stretchr/testify/assert"
 )
 
