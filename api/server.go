@@ -15,7 +15,7 @@ import (
 )
 
 type Server struct {
-	queries *database.Queries
+	queries *database.Store
 	router  *gin.Engine
 	config  *utils.Config
 }
@@ -35,7 +35,7 @@ func NewServer(envPath string) *Server {
 
 	tokenController = utils.NewJWTToken(config)
 
-	q := database.New(conn)
+	q := database.NewStore(conn)
 
 	g := gin.Default()
 	if v, ok := binding.Validator.Engine().(*validator.Validate); ok {

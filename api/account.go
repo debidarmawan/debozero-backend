@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"database/sql"
 	"net/http"
 
 	database "github.com/debidarmawan/debozero-backend/database/sqlc"
@@ -21,6 +22,7 @@ func (a Account) router(server *Server) {
 
 	serverGroup.POST("create", a.createAccount)
 	serverGroup.GET("", a.getUserAccount)
+	serverGroup.POST("transfer", a.transfer)
 }
 
 type AccountRequest struct {
@@ -74,4 +76,75 @@ func (a Account) getUserAccount(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, accounts)
+}
+
+type TransferRequest struct {
+	ToAccountID   int32   `json:"to_account_id" binding:"required"`
+	Amount        float64 `json:"amount" binding:"required"`
+	FromAccountID int32   `json:"from_account_id" binding:"required"`
+}
+
+func (a *Account) transfer(c *gin.Context) {
+	userID, err := utils.GetActiveUser(c)
+	if err != nil {
+		return
+	}
+
+	tr := new(TransferRequest)
+
+	if err := c.ShouldBindJSON(&tr); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	fromAccount, err := a.server.queries.GetAccountByID(context.Background(), int64(tr.FromAccountID))
+	if err != nil {
+		if err == sql.ErrNoRows {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "couldn't get account"})
+			return
+		}
+
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	if fromAccount.UserID != int32(userID) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "couldn't get account"})
+		return
+	}
+
+	toAccount, err := a.server.queries.GetAccountByID(context.Background(), int64(tr.ToAccountID))
+	if err != nil {
+		if err == sql.ErrNoRows {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "destination account is not found"})
+			return
+		}
+
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	if toAccount.Currency != fromAccount.Currency {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Currency is not match"})
+		return
+	}
+
+	if fromAccount.Balance < tr.Amount {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Insuficient balance"})
+		return
+	}
+
+	txArg := database.CreateTransferParams{
+		FromAccountID: tr.FromAccountID,
+		ToAccountID:   tr.ToAccountID,
+		Amount:        tr.Amount,
+	}
+
+	tx, err := a.server.queries.TransferTx(context.Background(), txArg)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Unexpected error is occured"})
+		return
+	}
+
+	c.JSON(http.StatusCreated, tx)
 }
